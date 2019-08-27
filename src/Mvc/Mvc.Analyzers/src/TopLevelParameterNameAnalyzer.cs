@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Diagnostics;
@@ -89,9 +90,14 @@ namespace Microsoft.AspNetCore.Mvc.Analyzers
                 return false;
             }
 
-            if (SpecifiesModelType(symbolCache, parameter))
+            if (SpecifiesModelType(in symbolCache, parameter))
             {
                 // Ignore parameters that specify a model type.
+                return false;
+            }
+
+            if (!IsComplexType(in symbolCache, parameter.Type))
+            {
                 return false;
             }
 
@@ -120,6 +126,25 @@ namespace Microsoft.AspNetCore.Mvc.Analyzers
             }
 
             return false;
+        }
+
+        private static bool IsComplexType(in SymbolCache symbolCache, ITypeSymbol type)
+        {
+            // This analyzer should not apply to simple types. In MVC, a simple type is any type that has a type converter that returns true for TypeConverter.CanConvertFrom(typeof(string)).
+            // Unfortunately there isn't a Roslyn way of determining if a TypeConverter exists for a given symbol or if the converter allows string conversions.
+            // https://github.com/dotnet/corefx/blob/v3.0.0-preview8.19405.3/src/System.ComponentModel.TypeConverter/src/System/ComponentModel/ReflectTypeDescriptionProvider.cs#L103-L141
+            // provides a list of types that have built-in converters. Of the types that can convert from string, everything with the exception of three reference types is a value type.
+            // We'll use a simpler heuristic in the analyzer: A type is simple if it's a value type or if it's one of the the following types: System.CultureInfo, System.Uri, and System.Version.
+            // Using value types as parameters to be bound is fairly rare, so it's fairly limited 
+
+            if (type.TypeKind == TypeKind.Struct || type.TypeKind == TypeKind.Enum)
+            {
+                return false;
+            }
+
+            return !type.Equals(symbolCache.Version) &&
+                !type.Equals(symbolCache.Uri) &&
+                !type.Equals(symbolCache.CultureInfo);
         }
 
         internal static string GetName(in SymbolCache symbolCache, ISymbol symbol)
@@ -192,6 +217,9 @@ namespace Microsoft.AspNetCore.Mvc.Analyzers
                 INamedTypeSymbol modelNameProvider,
                 INamedTypeSymbol nonControllerAttribute,
                 INamedTypeSymbol nonActionAttribute,
+                INamedTypeSymbol cultureInfo,
+                INamedTypeSymbol version,
+                INamedTypeSymbol uri,
                 IMethodSymbol disposableDispose)
             {
                 BindAttribute = bindAttribute;
@@ -202,6 +230,9 @@ namespace Microsoft.AspNetCore.Mvc.Analyzers
                 IModelNameProvider = modelNameProvider;
                 NonControllerAttribute = nonControllerAttribute;
                 NonActionAttribute = nonActionAttribute;
+                CultureInfo = cultureInfo;
+                Version = version;
+                Uri = uri;
                 IDisposableDispose = disposableDispose;
             }
 
@@ -251,6 +282,21 @@ namespace Microsoft.AspNetCore.Mvc.Analyzers
                     return false;
                 }
 
+                if (!TryGetType(typeof(CultureInfo).FullName, out var cultureInfo))
+                {
+                    return false;
+                }
+
+                if (!TryGetType(typeof(Version).FullName, out var version))
+                {
+                    return false;
+                }
+
+                if (!TryGetType(typeof(Uri).FullName, out var uri))
+                {
+                    return false;
+                }
+
                 var disposable = compilation.GetSpecialType(SpecialType.System_IDisposable);
                 var members = disposable?.GetMembers(nameof(IDisposable.Dispose));
                 var idisposableDispose = (IMethodSymbol?)members?[0];
@@ -268,6 +314,9 @@ namespace Microsoft.AspNetCore.Mvc.Analyzers
                     iModelNameProvider,
                     nonControllerAttribute,
                     nonActionAttribute,
+                    cultureInfo,
+                    version,
+                    uri,
                     idisposableDispose);
 
                 return true;
@@ -288,6 +337,9 @@ namespace Microsoft.AspNetCore.Mvc.Analyzers
             public INamedTypeSymbol NonControllerAttribute { get; }
             public INamedTypeSymbol NonActionAttribute { get; }
             public IMethodSymbol IDisposableDispose { get; }
+            public INamedTypeSymbol CultureInfo { get; }
+            public INamedTypeSymbol Version { get; }
+            public INamedTypeSymbol Uri { get; }
         }
     }
 }
