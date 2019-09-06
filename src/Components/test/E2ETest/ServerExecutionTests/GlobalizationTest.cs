@@ -31,7 +31,7 @@ namespace Microsoft.AspNetCore.Components.E2ETest.ServerExecutionTests
         {
             Navigate(ServerPathBase);
             Browser.MountTestComponent<CulturePicker>();
-            Browser.WaitUntilExists(By.Id("culture-selector"));
+            Browser.Exists(By.Id("culture-selector"));
         }
 
         [Theory]
@@ -46,9 +46,9 @@ namespace Microsoft.AspNetCore.Components.E2ETest.ServerExecutionTests
 
             // That should have triggered a redirect, wait for the main test selector to come up.
             Browser.MountTestComponent<GlobalizationBindCases>();
-            Browser.WaitUntilExists(By.Id("globalization-cases"));
+            Browser.Exists(By.Id("globalization-cases"));
 
-            var cultureDisplay = Browser.WaitUntilExists(By.Id("culture-name-display"));
+            var cultureDisplay = Browser.Element(By.Id("culture-name-display"));
             Assert.Equal($"Culture is: {culture}", cultureDisplay.Text);
 
             // int
@@ -118,9 +118,9 @@ namespace Microsoft.AspNetCore.Components.E2ETest.ServerExecutionTests
 
             // That should have triggered a redirect, wait for the main test selector to come up.
             Browser.MountTestComponent<GlobalizationBindCases>();
-            Browser.WaitUntilExists(By.Id("globalization-cases"));
+            Browser.Exists(By.Id("globalization-cases"));
 
-            var cultureDisplay = Browser.WaitUntilExists(By.Id("culture-name-display"));
+            var cultureDisplay = Browser.Element(By.Id("culture-name-display"));
             Assert.Equal($"Culture is: {culture}", cultureDisplay.Text);
 
             // int
@@ -184,9 +184,9 @@ namespace Microsoft.AspNetCore.Components.E2ETest.ServerExecutionTests
 
             // That should have triggered a redirect, wait for the main test selector to come up.
             Browser.MountTestComponent<GlobalizationBindCases>();
-            Browser.WaitUntilExists(By.Id("globalization-cases"));
+            Browser.Exists(By.Id("globalization-cases"));
 
-            var cultureDisplay = Browser.WaitUntilExists(By.Id("culture-name-display"));
+            var cultureDisplay = Browser.Element(By.Id("culture-name-display"));
             Assert.Equal($"Culture is: {culture}", cultureDisplay.Text);
 
             // int
